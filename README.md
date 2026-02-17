@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>完成版：運行状況4パターン対応</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* =========================================
+           CSS設定 (デザイン全般)
+           ========================================= */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        html { font-size: 100%; transition: font-size 0.3s; scroll-behavior: smooth; }
+        html.font-small { font-size: 85%; }
+        html.font-large { font-size: 125%; }
+
+        body {
+            font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            padding-top: 120px; /* Header(80) + Bar(40) */
+        }
+
+        a { text-decoration: none; color: inherit; }
+        ul { list-style: none; }
+
+        /* --- 1. 運行状況バー --- */
+        #status-bar {
+            position: fixed; top: 0; left: 0; width: 100%; height: 40px;
+            z-index: 1100; display: flex; align-items: center; justify-content: center;
+            font-weight: bold; color: #fff; transition: background-color 0.3s;
+            padding: 0 20px; font-size: 0.9rem;
+        }
+        /* 状態別の色（4パターン＋読込中） */
+        .status-loading { background-color: #95a5a6; } /* 読込中: グレー */
+        .status-normal { background-color: #27ae60; }  /* 運行中: 緑 */
+        .status-delay { background-color: #f39c12; }   /* 遅延中: オレンジ */
+        .status-alert { background-color: #e74c3c; animation: flash 2s infinite; } /* 見合わせ: 赤(点滅) */
+        .status-stopped { background-color: #7f8c8d; } /* 運行してない: ダークグレー */
+
+        @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.8; } }
+
+        /* --- 2. ヘッダー & ナビゲーション --- */
+        .header {
+            background-color: #ffffff; height: 80px; position: fixed; top: 40px; left: 0; width: 100%;
+            z-index: 1000; display: flex; align-items: center; justify-content: space-between;
+            padding: 0 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            transition: all 0.3s;
+        }
+
+        .brand-wrapper { display: flex; align-items: center; flex-shrink: 0; }
+        .logo-img { width: 50px; height: 50px; object-fit: cover; border-radius: 6px; margin-right: 12px; background-color: #eee; }
+        .brand-text { display: flex; flex-direction: column; justify-content: center; line-height: 1.2; }
+        .group-name { font-size: 0.7rem; color: #888; margin-bottom: 2px; }
+        .company-name { font-size: 1.125rem; font-weight: bold; color: #2c3e50; }
+
+        .header-right { display: flex; align-items: center; gap: 20px; }
+
+        /* 文字サイズ変更パネル */
+        .font-control-panel {
+            display: flex; align-items: center; background-color: #f0f2f5;
+            padding: 3px; border-radius: 20px; border: 1px solid #ddd;
+        }
+        .font-label { font-size: 0.75rem; color: #666; margin: 0 8px; font-weight: bold; }
+        .font-btn {
+            background: none; border: none; padding: 5px 10px; font-size: 0.85rem;
+            cursor: pointer; border-radius: 15px; color: #555; transition: all 0.2s;
+        }
+        .font-btn:hover { background-color: rgba(0,0,0,0.05); }
+        .font-btn.active { background-color: #3498db; color: #fff; font-weight: bold; }
+
+        /* PC用メニュー */
+        .nav-menu { display: flex; align-items: center; }
+        .nav-item { margin-left: 15px; position: relative; }
+        .nav-link {
+            font-size: 0.95rem; font-weight: 600; color: #444; padding: 10px 5px;
+            display: block; transition: color 0.3s; white-space: nowrap;
+        }
+        .nav-link::after {
+            content: ''; position: absolute; bottom: 0; left: 0; width: 0%; height: 2px;
+            background-color: #3498db; transition: width 0.3s ease;
+        }
+        .nav-link:hover { color: #3498db; }
+        .nav-link:hover::after { width: 100%; }
+
+        /* ドロップダウンメニュー */
+        .dropdown-menu {
+            position: absolute; top: 100%; left: -10px; background-color: #fff;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1); min-width: 200px; border-radius: 8px;
+            z-index: 1000; padding: 10px 0; opacity: 0; visibility: hidden;
+            transform: translateY(15px); transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+        .nav-item.dropdown:hover .dropdown-menu { opacity: 1; visibility: visible; transform: translateY(0); }
+        .dropdown-item a { display: block; padding: 12px 20px; font-size: 0.9rem; color: #555; transition: background 0.2s, padding-left 0.2s; }
+        .dropdown-item a:hover { background-color: #f8f9fa; color: #3498db; padding-left: 25px; }
+
+        /* スマホ用ハンバーガー */
+        .hamburger { display: none; cursor: pointer; z-index: 1001; }
+        .bar { display: block; width: 25px; height: 2px; margin: 6px auto; background-color: #333; transition: all 0.3s ease-in-out; }
+
+        /* --- 3. メインコンテンツ --- */
+        .main-content { flex: 1; padding: 40px 20px; max-width: 1000px; margin: 0 auto; width: 100%; }
+        .hero { background-color: #f4f6f7; padding: 100px 20px; text-align: center; border-radius: 12px; margin-bottom: 60px; }
+
+        /* --- 4. フッター --- */
+        .footer { background-color: #2c3e50; color: #fff; padding: 50px 20px 20px; margin-top: auto; }
+        .footer-container { max-width: 1000px; margin: 0 auto; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 40px; }
+        .footer-section h3 { font-size: 1.125rem; margin-bottom: 20px; position: relative; padding-bottom: 10px; }
+        .footer-section h3::after { content: ''; position: absolute; left: 0; bottom: 0; width: 40px; height: 2px; background-color: #3498db; }
+        .footer-links li { margin-bottom: 12px; }
+        .footer-links a { color: #bdc3c7; transition: color 0.3s; }
+        .footer-links a:hover { color: #fff; text-decoration: underline; }
+        .footer-bottom {
+            text-align: center; margin-top: 50px; padding-top: 20px; border-top: 1px solid #3e5871;
+            font-size: 0.75rem; color: #8fa0b3; display: flex; flex-direction: column; gap: 10px;
+        }
+
+        /* --- 5. トップへ戻るボタン --- */
+        #back-to-top {
+            position: fixed; bottom: 30px; right: 30px;
+            background-color: #3498db; color: #fff; width: 50px; height: 50px;
+            border-radius: 50%; text-align: center; line-height: 50px; font-size: 1.2rem;
+            z-index: 1500; box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
+            opacity: 0; visibility: hidden; transform: translateY(20px); transition: all 0.3s ease;
+        }
+        #back-to-top.show { opacity: 1; visibility: visible; transform: translateY(0); }
+        #back-to-top:hover { background-color: #2980b9; transform: translateY(-5px); }
+
+        /* --- 6. レスポンシブ対応 (スマホ) --- */
+        @media (max-width: 1050px) {
+            .header { padding: 0 15px; height: 70px; top: 40px; }
+            body { padding-top: 110px; }
+            .header-right { gap: 10px; }
+            .font-label { display: none; }
+            .font-control-panel { padding: 2px; }
+            .hamburger { display: block; }
+            
+            .nav-menu {
+                position: fixed; left: 0; top: 110px; background-color: #fff; width: 100%; height: 0;
+                overflow-y: auto; flex-direction: column; align-items: center;
+                transition: height 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+                box-shadow: 0 10px 20px rgba(0,0,0,0.05); display: flex; z-index: 998;
+            }
+            .nav-menu.active { height: calc(100vh - 110px); padding-top: 20px; padding-bottom: 100px; }
+            .nav-item { margin: 0; width: 100%; text-align: center; opacity: 0; transform: translateY(20px); transition: all 0.4s; }
+            .nav-menu.active .nav-item { opacity: 1; transform: translateY(0); }
+
+            .nav-link { padding: 15px; font-size: 1rem; border-bottom: 1px solid #f0f0f0; }
+            .nav-link::after { display: none; }
+            .dropdown-menu { position: static; display: none; width: 100%; opacity: 1; visibility: visible; transform: none; box-shadow: none; background-color: #fafafa; padding: 0; }
+            .nav-item.dropdown:hover .dropdown-menu { display: block; animation: fadeIn 0.3s; }
+            @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+            
+            .hamburger.active .bar:nth-child(2) { opacity: 0; }
+            .hamburger.active .bar:nth-child(1) { transform: translateY(8px) rotate(45deg); }
+            .hamburger.active .bar:nth-child(3) { transform: translateY(-8px) rotate(-45deg); }
+            .footer-container { flex-direction: column; gap: 30px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="status-bar" class="status-loading">
+        <i class="fa-solid fa-spinner fa-spin" style="margin-right: 8px;"></i>
+        <span id="status-text">情報を取得中...</span>
+    </div>
+
+    <header class="header">
+        <a href="#" class="brand-wrapper">
+            <img src="https://placehold.jp/150x150.png" alt="会社ロゴ" class="logo-img">
+            <div class="brand-text">
+                <span class="group-name">Global Group</span>
+                <span class="company-name">株式会社サンプル</span>
+            </div>
+        </a>
+
+        <div class="header-right">
+            <div class="font-control-panel">
+                <span class="font-label">サイズ</span>
+                <button class="font-btn" onclick="setFontSize('small')" id="btn-small">小</button>
+                <button class="font-btn" onclick="setFontSize('medium')" id="btn-medium">中</button>
+                <button class="font-btn" onclick="setFontSize('large')" id="btn-large">大</button>
+            </div>
+            <div class="hamburger">
+                <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+            </div>
+            <nav>
+                <ul class="nav-menu">
+                    <li class="nav-item"><a href="#" class="nav-link">ホーム</a></li>
+                    <li class="nav-item"><a href="#" class="nav-link">ニュース</a></li>
+                    <li class="nav-item"><a href="#" class="nav-link">路線図</a></li>
+                    <li class="nav-item dropdown">
+                        <a href="#" class="nav-link">サービス <i class="fa-solid fa-caret-down"></i></a>
+                        <ul class="dropdown-menu">
+                            <li class="dropdown-item"><a href="#">Webサイト制作</a></li>
+                            <li class="dropdown-item"><a href="#">システム開発</a></li>
+                            <li class="dropdown-item"><a href="#">マーケティング支援</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item"><a href="#" class="nav-link">会社概要</a></li>
+                    <li class="nav-item"><a href="#" class="nav-link">求人</a></li>
+                    <li class="nav-item"><a href="#" class="nav-link">お問い合わせ</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <section class="hero">
+            <h1>4パターンの運行状況システム</h1>
+            <div style="background: #fff; display: inline-block; padding: 20px; border-radius: 8px; margin-top: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); text-align: left;">
+                <p><strong>スプレッドシートのA1セルに入力する文字:</strong></p>
+                <ul style="list-style: none; margin-top: 10px;">
+                    <li style="margin-bottom: 8px;">🟢 <code>normal</code> ： 運行中</li>
+                    <li style="margin-bottom: 8px;">🟠 <code>delay</code> ： 遅延中</li>
+                    <li style="margin-bottom: 8px;">🔴 <code>alert</code> ： 運転見合わせ（点滅）</li>
+                    <li style="margin-bottom: 8px;">⚫️ <code>stopped</code> ： 運行していません</li>
+                </ul>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-section">
+                <h3>株式会社サンプル</h3>
+                <p>〒100-0000<br>東京都千代田区〇〇 1-2-3</p>
+            </div>
+            <div class="footer-section">
+                <h3>メニュー</h3>
+                <ul class="footer-links">
+                    <li><a href="#">ホーム</a></li>
+                    <li><a href="#">ニュース</a></li>
+                    <li><a href="#">路線図</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>その他</h3>
+                <ul class="footer-links">
+                    <li><a href="#">プライバシーポリシー</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <span>&copy; 2024 Sample Company Co., Ltd.</span>
+        </div>
+    </footer>
+
+    <a href="#" id="back-to-top" title="トップへ戻る">
+        <i class="fa-solid fa-arrow-up"></i>
+    </a>
+
+    <script>
+        // ==========================================
+        //  A. スプレッドシート連携機能 (新しいURLを設定済み)
+        // ==========================================
+        const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbwnOtC0MEt216M2c0PpTP9hg0vWux1_NLDlpFn8B9Y792dcMfwIX3Dv-2c9MCcdixHHmQ/exec"; 
+
+        const statusBar = document.getElementById('status-bar');
+        const statusText = document.getElementById('status-text');
+        const statusIcon = statusBar.querySelector('i');
+
+        async function fetchTrainStatus() {
+            if (!SHEET_API_URL) return;
+
+            try {
+                const response = await fetch(SHEET_API_URL);
+                if (!response.ok) throw new Error("NetWork Error");
+                const data = await response.json(); 
+                updateStatusDisplay(data.status);
+
+            } catch (error) {
+                console.error("Fetch Error:", error);
+                statusText.textContent = "情報の取得に失敗";
+                statusIcon.className = "fa-solid fa-circle-exclamation";
+            }
+        }
+
+        function updateStatusDisplay(statusValue) {
+            statusBar.className = ''; // クラスをリセット
+            const cleanStatus = statusValue ? String(statusValue).trim() : "";
+
+            if (cleanStatus === 'alert') {
+                statusBar.classList.add('status-alert');
+                statusText.textContent = "運転見合わせ";
+                statusIcon.className = "fa-solid fa-triangle-exclamation";
+            } else if (cleanStatus === 'delay') {
+                statusBar.classList.add('status-delay');
+                statusText.textContent = "遅延中";
+                statusIcon.className = "fa-solid fa-clock";
+            } else if (cleanStatus === 'stopped') {
+                statusBar.classList.add('status-stopped');
+                statusText.textContent = "運行していません";
+                statusIcon.className = "fa-solid fa-minus-circle";
+            } else {
+                // normal または それ以外の文字が入っている場合
+                statusBar.classList.add('status-normal');
+                statusText.textContent = "運行中";
+                statusIcon.className = "fa-solid fa-circle-check";
+            }
+        }
+        
+        // 読み込み時に実行
+        window.addEventListener('load', fetchTrainStatus);
+
+
+        // ==========================================
+        //  B. トップへ戻るボタン
+        // ==========================================
+        const backToTopBtn = document.getElementById("back-to-top");
+        window.addEventListener("scroll", () => {
+            if (window.scrollY > 300) {
+                backToTopBtn.classList.add("show");
+            } else {
+                backToTopBtn.classList.remove("show");
+            }
+        });
+        backToTopBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+
+
+        // ==========================================
+        //  C. 文字サイズ変更
+        // ==========================================
+        const htmlElement = document.documentElement;
+        const btnSmall = document.getElementById('btn-small');
+        const btnMedium = document.getElementById('btn-medium');
+        const btnLarge = document.getElementById('btn-large');
+
+        function setFontSize(size) {
+            htmlElement.classList.remove('font-small', 'font-large');
+            btnSmall.classList.remove('active');
+            btnMedium.classList.remove('active');
+            btnLarge.classList.remove('active');
+            
+            if (size === 'small') { htmlElement.classList.add('font-small'); btnSmall.classList.add('active'); }
+            else if (size === 'large') { htmlElement.classList.add('font-large'); btnLarge.classList.add('active'); }
+            else { btnMedium.classList.add('active'); }
+            
+            try { localStorage.setItem('userFontSize', size); } catch (e) {}
+        }
+        
+        try {
+            const savedSize = localStorage.getItem('userFontSize');
+            if (savedSize) setFontSize(savedSize); else setFontSize('medium');
+        } catch(e) { setFontSize('medium'); }
+
+
+        // ==========================================
+        //  D. ハンバーガーメニュー
+        // ==========================================
+        const hamburger = document.querySelector(".hamburger");
+        const navMenu = document.querySelector(".nav-menu");
+
+        hamburger.addEventListener("click", () => {
+            hamburger.classList.toggle("active");
+            navMenu.classList.toggle("active");
+        });
+
+        document.querySelectorAll(".nav-link:not(.dropdown > a)").forEach(n => n.addEventListener("click", () => {
+            hamburger.classList.remove("active");
+            navMenu.classList.remove("active");
+        }));
+    </script>
+</body>
+</html>
