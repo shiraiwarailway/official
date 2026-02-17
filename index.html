@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>完成版：運行状況4パターン対応</title>
+    <title>完成版：運行状況5パターン対応</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         /* =========================================
@@ -35,12 +35,14 @@
             font-weight: bold; color: #fff; transition: background-color 0.3s;
             padding: 0 20px; font-size: 0.9rem;
         }
-        /* 状態別の色（4パターン＋読込中） */
+        /* 状態別の色（5パターン＋読込中） */
         .status-loading { background-color: #95a5a6; } /* 読込中: グレー */
-        .status-normal { background-color: #27ae60; }  /* 運行中: 緑 */
-        .status-delay { background-color: #f39c12; }   /* 遅延中: オレンジ */
-        .status-alert { background-color: #e74c3c; animation: flash 2s infinite; } /* 見合わせ: 赤(点滅) */
-        .status-stopped { background-color: #7f8c8d; } /* 運行してない: ダークグレー */
+        
+        .status-normal   { background-color: #27ae60; }  /* 運行中: 緑 */
+        .status-delay    { background-color: #f39c12; }  /* 遅延中: オレンジ */
+        .status-disorder { background-color: #8e44ad; }  /* ダイヤ乱れ: 紫 */
+        .status-alert    { background-color: #e74c3c; animation: flash 2s infinite; } /* 見合わせ: 赤(点滅) */
+        .status-stopped  { background-color: #7f8c8d; }  /* 運行してない: ダークグレー */
 
         @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.8; } }
 
@@ -211,12 +213,13 @@
 
     <main class="main-content">
         <section class="hero">
-            <h1>4パターンの運行状況システム</h1>
+            <h1>5パターンの運行状況システム</h1>
             <div style="background: #fff; display: inline-block; padding: 20px; border-radius: 8px; margin-top: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); text-align: left;">
                 <p><strong>スプレッドシートのA1セルに入力する文字:</strong></p>
                 <ul style="list-style: none; margin-top: 10px;">
                     <li style="margin-bottom: 8px;">🟢 <code>normal</code> ： 運行中</li>
                     <li style="margin-bottom: 8px;">🟠 <code>delay</code> ： 遅延中</li>
+                    <li style="margin-bottom: 8px;">🟣 <code>disorder</code> ： ダイヤ乱れ（紫）<span style="color:#d35400; font-weight:bold; font-size:0.8em;">←NEW</span></li>
                     <li style="margin-bottom: 8px;">🔴 <code>alert</code> ： 運転見合わせ（点滅）</li>
                     <li style="margin-bottom: 8px;">⚫️ <code>stopped</code> ： 運行していません</li>
                 </ul>
@@ -256,8 +259,9 @@
 
     <script>
         // ==========================================
-        //  A. スプレッドシート連携機能 (新しいURLを設定済み)
+        //  A. スプレッドシート連携機能
         // ==========================================
+        // ユーザーが提供した「誰でもアクセス可能」な最新URL
         const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbwnOtC0MEt216M2c0PpTP9hg0vWux1_NLDlpFn8B9Y792dcMfwIX3Dv-2c9MCcdixHHmQ/exec"; 
 
         const statusBar = document.getElementById('status-bar');
@@ -292,6 +296,11 @@
                 statusBar.classList.add('status-delay');
                 statusText.textContent = "遅延中";
                 statusIcon.className = "fa-solid fa-clock";
+            } else if (cleanStatus === 'disorder') {
+                // ダイヤ乱れ
+                statusBar.classList.add('status-disorder');
+                statusText.textContent = "ダイヤ乱れ";
+                statusIcon.className = "fa-solid fa-shuffle";
             } else if (cleanStatus === 'stopped') {
                 statusBar.classList.add('status-stopped');
                 statusText.textContent = "運行していません";
