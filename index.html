@@ -92,17 +92,52 @@
         .main-content { flex: 1; padding: 40px 20px; max-width: 1000px; margin: 0 auto; width: 100%; }
         .hero { background-color: #f4f6f7; padding: 100px 20px; text-align: center; border-radius: 12px; margin-bottom: 60px; }
 
-        /* 通知ボタン */
-        .notify-btn {
+        /* --- トグルスイッチのデザイン --- */
+        .notification-control {
             margin-top: 30px;
-            background-color: #e67e22; color: #fff;
-            border: none; padding: 12px 25px; border-radius: 30px;
-            font-size: 1rem; font-weight: bold; cursor: pointer;
-            box-shadow: 0 4px 10px rgba(230, 126, 34, 0.3);
-            transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 10px;
+            display: flex; flex-direction: column; align-items: center; gap: 10px;
+            background-color: #fff; padding: 20px; border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            display: inline-block; /* 中央寄せ用 */
         }
-        .notify-btn:hover { background-color: #d35400; transform: translateY(-2px); }
-        .notify-btn.disabled { background-color: #bdc3c7; cursor: default; transform: none; box-shadow: none; }
+        
+        .switch-container {
+            display: flex; align-items: center; gap: 15px;
+        }
+
+        /* スイッチ本体 */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        
+        /* スライダー部分 */
+        .slider {
+            position: absolute; cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute; content: "";
+            height: 26px; width: 26px;
+            left: 4px; bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        /* ONの状態 */
+        input:checked + .slider { background-color: #27ae60; }
+        input:checked + .slider:before { transform: translateX(26px); }
+
+        .toggle-label { font-weight: bold; font-size: 1.1rem; color: #555; }
+        .toggle-status { font-size: 0.9rem; color: #888; }
+
 
         /* 会社概要 */
         .company-profile { background-color: #fff; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); padding: 40px; margin-bottom: 60px; }
@@ -214,11 +249,20 @@
                 </ul>
             </div>
             <br>
-            <button id="notify-btn" class="notify-btn" onclick="enableNotifications()">
-                <i class="fa-solid fa-bell"></i> アプリ化して通知をONにする
-            </button>
+            
+            <div class="notification-control">
+                <div class="switch-container">
+                    <span class="toggle-label">運行開始通知</span>
+                    <label class="switch">
+                        <input type="checkbox" id="notify-toggle">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                <p class="toggle-status" id="toggle-status-text">OFF</p>
+            </div>
+            
             <p style="font-size:0.8rem; color:#888; margin-top:10px;">
-                ※「ホーム画面に追加」を行うと、裏側でも通知が届きやすくなります。
+                ※ONにすると、アプリを閉じていても運行開始時に通知が届きます。
             </p>
         </section>
 
@@ -272,48 +316,83 @@
         const statusBar = document.getElementById('status-bar');
         const statusText = document.getElementById('status-text');
         const statusIcon = statusBar.querySelector('i');
-        const notifyBtn = document.getElementById('notify-btn');
+        
+        const notifyToggle = document.getElementById('notify-toggle');
+        const toggleStatusText = document.getElementById('toggle-status-text');
 
-        // ==========================================
-        //  Service Workerの登録 (バックグラウンド用)
-        // ==========================================
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                    .then(reg => console.log('SW Registered!', reg))
-                    .catch(err => console.log('SW Failed', err));
-            });
-        }
-
-        async function enableNotifications() {
-            if (!("Notification" in window)) {
-                alert("このブラウザは対応していません。");
-                return;
-            }
-            const permission = await Notification.requestPermission();
-            if (permission === "granted") {
-                notifyBtn.innerHTML = '<i class="fa-solid fa-check"></i> 通知がONになっています';
-                notifyBtn.classList.add('disabled');
-                
-                // 初回テスト通知
-                if ('serviceWorker' in navigator) {
-                    navigator.serviceWorker.ready.then(registration => {
-                        registration.showNotification("設定完了", {
-                            body: "ページを閉じても、1分おきに運行状況をチェックします。",
-                            icon: "group.jpg"
-                        });
-                    });
-                } else {
-                    new Notification("設定完了", { body: "通知が許可されました" });
-                }
+        function initToggleState() {
+            const savedSetting = localStorage.getItem('shiraiwa_notify_enabled');
+            if (savedSetting === 'true' && Notification.permission === 'granted') {
+                notifyToggle.checked = true;
+                updateToggleText(true);
+                registerSW();
             } else {
-                alert("通知がブロックされました。");
+                notifyToggle.checked = false;
+                updateToggleText(false);
             }
         }
 
-        // ==========================================
-        //  通常表示用 (ページを開いている時)
-        // ==========================================
+        function updateToggleText(isOne) {
+            if (isOne) {
+                toggleStatusText.textContent = "現在ONになっています";
+                toggleStatusText.style.color = "#27ae60";
+            } else {
+                toggleStatusText.textContent = "現在OFFです";
+                toggleStatusText.style.color = "#888";
+            }
+        }
+
+        notifyToggle.addEventListener('change', async () => {
+            if (notifyToggle.checked) {
+                if (!("Notification" in window)) {
+                    alert("このブラウザは通知に対応していません。");
+                    notifyToggle.checked = false;
+                    return;
+                }
+
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    localStorage.setItem('shiraiwa_notify_enabled', 'true');
+                    updateToggleText(true);
+                    registerSW();
+                    
+                    new Notification("通知ON", { body: "設定を保存しました。運行開始時に通知します。" });
+                } else {
+                    notifyToggle.checked = false;
+                    alert("通知が許可されませんでした。ブラウザの設定を確認してください。");
+                }
+
+            } else {
+                localStorage.setItem('shiraiwa_notify_enabled', 'false');
+                updateToggleText(false);
+                unregisterSW();
+            }
+        });
+
+        function registerSW() {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('SW Registered'))
+                    .catch(err => console.log('SW Fail', err));
+            }
+        }
+
+        function unregisterSW() {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                    for(let registration of registrations) {
+                        registration.unregister();
+                    }
+                });
+                console.log('SW Unregistered');
+            }
+        }
+
+        window.addEventListener('load', () => {
+            initToggleState();
+            fetchTrainStatus();
+        });
+
         async function fetchTrainStatus() {
             try {
                 const response = await fetch(SHEET_API_URL);
@@ -343,10 +422,9 @@
             }
         }
         
-        window.addEventListener('load', fetchTrainStatus);
-        setInterval(fetchTrainStatus, 30000); // 開いているときは30秒更新
+        // 20秒ごとに更新 (20000ミリ秒)
+        setInterval(fetchTrainStatus, 20000); 
 
-        // その他UI動作
         const backToTopBtn = document.getElementById("back-to-top");
         window.addEventListener("scroll", () => {
             if (window.scrollY > 300) backToTopBtn.classList.add("show");
