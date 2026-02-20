@@ -12,28 +12,21 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         /* =========================================
-           CSS設定 (デザイン全般)
+           CSS設定
            ========================================= */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         
         html { font-size: 100%; transition: font-size 0.3s; scroll-behavior: smooth; }
-        html.font-small { font-size: 85%; }
-        html.font-large { font-size: 125%; }
-
         body {
-            font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
+            font-family: "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6; color: #333;
+            display: flex; flex-direction: column; min-height: 100vh;
             padding-top: 130px; 
         }
-
         a { text-decoration: none; color: inherit; }
         ul { list-style: none; }
 
-        /* --- 1. 運行状況バー --- */
+        /* ステータスバー */
         #status-bar {
             position: fixed; top: 0; left: 0; width: 100%; height: 40px;
             z-index: 1100; display: flex; align-items: center; justify-content: center;
@@ -46,35 +39,26 @@
         .status-disorder { background-color: #8e44ad; }
         .status-alert    { background-color: #e74c3c; animation: flash 2s infinite; }
         .status-stopped  { background-color: #7f8c8d; }
-
         @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.8; } }
 
-        /* --- 2. ヘッダー & ナビゲーション --- */
+        /* ヘッダー */
         .header {
             background-color: #ffffff; height: 90px; 
             position: fixed; top: 40px; left: 0; width: 100%;
             z-index: 1000; display: flex; align-items: center; justify-content: space-between;
             padding: 0 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);
         }
-
         .brand-wrapper { display: flex; align-items: center; flex-shrink: 0; }
         .logo-img { width: 70px; height: 70px; object-fit: cover; border-radius: 6px; margin-right: 15px; background-color: #eee; }
         .brand-text { display: flex; flex-direction: column; justify-content: center; line-height: 1.2; }
         .group-name { font-size: 0.75rem; color: #888; margin-bottom: 3px; }
         .company-name { font-size: 1.25rem; font-weight: bold; color: #2c3e50; }
-
+        
         .header-right { display: flex; align-items: center; gap: 20px; }
-
-        .font-control-panel { display: flex; align-items: center; background-color: #f0f2f5; padding: 3px; border-radius: 20px; border: 1px solid #ddd; }
-        .font-label { font-size: 0.75rem; color: #666; margin: 0 8px; font-weight: bold; }
-        .font-btn { background: none; border: none; padding: 5px 10px; font-size: 0.85rem; cursor: pointer; border-radius: 15px; color: #555; }
-        .font-btn.active { background-color: #3498db; color: #fff; font-weight: bold; }
-
         .nav-menu { display: flex; align-items: center; }
         .nav-item { margin-left: 15px; position: relative; }
         .nav-link { font-size: 0.95rem; font-weight: 600; color: #444; padding: 10px 5px; display: block; }
         .nav-link:hover { color: #3498db; }
-
         .dropdown-menu {
             position: absolute; top: 100%; left: -10px; background-color: #fff;
             box-shadow: 0 10px 20px rgba(0,0,0,0.1); min-width: 200px; border-radius: 8px;
@@ -83,108 +67,75 @@
         }
         .nav-item.dropdown:hover .dropdown-menu { opacity: 1; visibility: visible; transform: translateY(0); }
         .dropdown-item a { display: block; padding: 12px 20px; font-size: 0.9rem; color: #555; }
-        .dropdown-item a:hover { background-color: #f8f9fa; color: #3498db; }
-
         .hamburger { display: none; cursor: pointer; z-index: 1001; }
         .bar { display: block; width: 25px; height: 2px; margin: 6px auto; background-color: #333; transition: all 0.3s; }
 
-        /* --- 3. メインコンテンツ --- */
+        /* メイン */
         .main-content { flex: 1; padding: 40px 20px; max-width: 1000px; margin: 0 auto; width: 100%; }
         .hero { background-color: #f4f6f7; padding: 100px 20px; text-align: center; border-radius: 12px; margin-bottom: 60px; }
 
-        /* --- トグルスイッチのデザイン --- */
+        /* スイッチ */
         .notification-control {
-            margin-top: 30px;
-            display: flex; flex-direction: column; align-items: center; gap: 10px;
+            margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 10px;
             background-color: #fff; padding: 20px; border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            display: inline-block; /* 中央寄せ用 */
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: inline-block;
         }
-        
-        .switch-container {
-            display: flex; align-items: center; gap: 15px;
-        }
-
-        /* スイッチ本体 */
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 60px;
-            height: 34px;
-        }
+        .switch-container { display: flex; align-items: center; gap: 15px; }
+        .switch { position: relative; display: inline-block; width: 60px; height: 34px; }
         .switch input { opacity: 0; width: 0; height: 0; }
-        
-        /* スライダー部分 */
         .slider {
-            position: absolute; cursor: pointer;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-color: #ccc;
-            transition: .4s;
-            border-radius: 34px;
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #ccc; transition: .4s; border-radius: 34px;
         }
         .slider:before {
-            position: absolute; content: "";
-            height: 26px; width: 26px;
-            left: 4px; bottom: 4px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
+            position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px;
+            background-color: white; transition: .4s; border-radius: 50%;
         }
-        
-        /* ONの状態 */
         input:checked + .slider { background-color: #27ae60; }
         input:checked + .slider:before { transform: translateX(26px); }
-
         .toggle-label { font-weight: bold; font-size: 1.1rem; color: #555; }
         .toggle-status { font-size: 0.9rem; color: #888; }
+        
+        .disclaimer-text { font-size: 0.8rem; color: #e74c3c; margin-top: 8px; font-weight: bold; }
 
-
-        /* 会社概要 */
-        .company-profile { background-color: #fff; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); padding: 40px; margin-bottom: 60px; }
+        /* 会社概要 (スクロール位置の調整を追加) */
+        .company-profile { 
+            background-color: #fff; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); 
+            padding: 40px; 
+            margin-bottom: 60px;
+            scroll-margin-top: 150px; /* ここでスクロール位置を調整 */
+        }
         .profile-title { font-size: 1.5rem; margin-bottom: 20px; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; color: #2c3e50; }
         .profile-warning { background-color: #fff3cd; color: #856404; padding: 15px; border-radius: 6px; margin-bottom: 25px; font-weight: bold; display: flex; align-items: center; gap: 10px; }
         .profile-table { width: 100%; border-collapse: collapse; }
         .profile-table th, .profile-table td { text-align: left; padding: 15px 10px; border-bottom: 1px solid #eee; }
         .profile-table th { width: 140px; color: #666; font-weight: normal; background-color: #fafafa; }
-        .profile-table td { font-weight: 500; word-break: break-all; }
-        .profile-link { color: #3498db; text-decoration: underline; }
 
-        /* --- 4. フッター --- */
+        /* フッター & 固定ボタン */
         .footer { background-color: #2c3e50; color: #fff; padding: 50px 20px 20px; margin-top: auto; }
         .footer-container { max-width: 1000px; margin: 0 auto; display: flex; justify-content: center; flex-wrap: wrap; gap: 60px; }
-        .footer-section h3 { font-size: 1.125rem; margin-bottom: 20px; position: relative; padding-bottom: 10px; }
-        .footer-section h3::after { content: ''; position: absolute; left: 0; bottom: 0; width: 40px; height: 2px; background-color: #3498db; }
-        .footer-links li { margin-bottom: 12px; }
-        .footer-links a { color: #bdc3c7; transition: color 0.3s; }
+        .footer-section h3 { font-size: 1.125rem; margin-bottom: 20px; border-bottom: 2px solid #3498db; padding-bottom: 10px; display: inline-block; }
+        .footer-links a { color: #bdc3c7; }
         .footer-bottom { text-align: center; margin-top: 50px; padding-top: 20px; border-top: 1px solid #3e5871; font-size: 0.75rem; color: #8fa0b3; display: flex; flex-direction: column; gap: 8px; }
-        .creator-credit { color: #666; font-size: 0.7rem; margin-top: 5px; opacity: 0.7; }
-
-        /* --- 5. 固定ボタン --- */
         #back-to-top { position: fixed; bottom: 30px; right: 30px; background-color: #3498db; color: #fff; width: 50px; height: 50px; border-radius: 50%; text-align: center; line-height: 50px; font-size: 1.2rem; z-index: 1500; opacity: 0; visibility: hidden; transition: all 0.3s; }
         #back-to-top.show { opacity: 1; visibility: visible; }
         #detail-btn { position: fixed; bottom: 30px; left: 30px; background-color: #2c3e50; color: #fff; padding: 0 20px; height: 50px; display: flex; align-items: center; justify-content: center; gap: 10px; border-radius: 25px; z-index: 1500; font-weight: bold; font-size: 0.95rem; }
 
-        /* --- 6. レスポンシブ --- */
         @media (max-width: 1050px) {
             .header { padding: 0 15px; height: 70px; top: 40px; }
             body { padding-top: 110px; }
             .header-right { gap: 10px; }
-            .font-label, .font-control-panel { display: none; }
             .hamburger { display: block; }
-            .logo-img { width: 55px; height: 55px; margin-right: 10px; }
-            .company-name { font-size: 1rem; }
             .nav-menu { position: fixed; left: 0; top: 110px; background-color: #fff; width: 100%; height: 0; overflow-y: auto; flex-direction: column; align-items: center; transition: height 0.4s; z-index: 998; box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
             .nav-menu.active { height: calc(100vh - 110px); padding-top: 20px; padding-bottom: 100px; }
             .nav-item { margin: 0; width: 100%; text-align: center; }
             .nav-link { padding: 15px; border-bottom: 1px solid #f0f0f0; }
-            .dropdown-menu { position: static; display: none; width: 100%; opacity: 1; visibility: visible; transform: none; box-shadow: none; background-color: #fafafa; }
+            .dropdown-menu { position: static; display: none; width: 100%; transform: none; box-shadow: none; background-color: #fafafa; }
             .nav-item.dropdown:hover .dropdown-menu { display: block; }
-            .hamburger.active .bar:nth-child(2) { opacity: 0; }
-            .hamburger.active .bar:nth-child(1) { transform: translateY(8px) rotate(45deg); }
-            .hamburger.active .bar:nth-child(3) { transform: translateY(-8px) rotate(-45deg); }
             .footer-container { flex-direction: column; gap: 30px; }
             .profile-table th, .profile-table td { display: block; width: 100%; border: none; }
-            .profile-table th { background-color: transparent; padding-bottom: 5px; font-size: 0.85rem; }
         }
     </style>
 </head>
@@ -203,7 +154,6 @@
                 <span class="company-name">白岩電鉄</span>
             </div>
         </a>
-
         <div class="header-right">
             <div class="hamburger">
                 <span class="bar"></span><span class="bar"></span><span class="bar"></span>
@@ -218,17 +168,9 @@
                         <ul class="dropdown-menu">
                             <li class="dropdown-item"><a href="#">Webサイト制作</a></li>
                             <li class="dropdown-item"><a href="#">システム開発</a></li>
-                            <li class="dropdown-item"><a href="#">マーケティング支援</a></li>
                         </ul>
                     </li>
                     <li class="nav-item"><a href="#company-profile" class="nav-link">会社概要</a></li>
-                    <li class="nav-item dropdown">
-                        <a href="#" class="nav-link">求人 <i class="fa-solid fa-caret-down"></i></a>
-                        <ul class="dropdown-menu">
-                            <li class="dropdown-item"><a href="#">運転手</a></li>
-                            <li class="dropdown-item"><a href="#">社員</a></li>
-                        </ul>
-                    </li>
                     <li class="nav-item"><a href="#" class="nav-link">お問い合わせ</a></li>
                 </ul>
             </nav>
@@ -243,26 +185,27 @@
                 <ul style="list-style: none; margin-top: 10px;">
                     <li style="margin-bottom: 8px;">🟢 <code>normal</code> ： 運行中</li>
                     <li style="margin-bottom: 8px;">🟠 <code>delay</code> ： 遅延中</li>
-                    <li style="margin-bottom: 8px;">🟣 <code>disorder</code> ： ダイヤ乱れ（紫）</li>
-                    <li style="margin-bottom: 8px;">🔴 <code>alert</code> ： 運転見合わせ（点滅）</li>
-                    <li style="margin-bottom: 8px;">⚫️ <code>stopped</code> ： 運行していません</li>
+                    <li style="margin-bottom: 8px;">🟣 <code>disorder</code> ： ダイヤ乱れ</li>
+                    <li style="margin-bottom: 8px;">🔴 <code>alert</code> ： 運転見合わせ</li>
+                    <li style="margin-bottom: 8px;">⚫️ <code>stopped</code> ： 運行停止</li>
                 </ul>
             </div>
             <br>
             
             <div class="notification-control">
                 <div class="switch-container">
-                    <span class="toggle-label">運行開始通知</span>
+                    <span class="toggle-label">運行状況通知</span>
                     <label class="switch">
                         <input type="checkbox" id="notify-toggle">
                         <span class="slider round"></span>
                     </label>
                 </div>
                 <p class="toggle-status" id="toggle-status-text">OFF</p>
+                <p class="disclaimer-text">※通知はテストの場合があり、正確ではない可能性があります。</p>
             </div>
             
             <p style="font-size:0.8rem; color:#888; margin-top:10px;">
-                ※ONにすると、アプリを閉じていても運行開始時に通知が届きます。
+                ※ONにすると、アプリを閉じていても状況変化時に通知が届きます。
             </p>
         </section>
 
@@ -276,7 +219,6 @@
                 <tr><th>社長</th><td>kaimon (@MO600_tanigumi)</td></tr>
                 <tr><th>ワールドリンク</th><td><a href="https://www.roblox.com/share?code=a41bc6231f00714b9afd915dc30324fd&type=ExperienceDetails&stamp=1771431125637" target="_blank" class="profile-link">Robloxで開く</a></td></tr>
                 <tr><th>グループリンク</th><td><a href="https://www.roblox.com/share/g/441094248" target="_blank" class="profile-link">グループに参加</a></td></tr>
-                <tr><th>オープンチャット(LINE)</th><td><a href="https://line.me/ti/g2/G40QSrZXyYBYFPxyRzQahAT9d_nFbxfEzZeyzw?utm_source=invitation&utm_medium=link_copy&utm_campaign=default" target="_blank" class="profile-link">LINEに参加</a></td></tr>
             </table>
         </section>
         
@@ -316,7 +258,6 @@
         const statusBar = document.getElementById('status-bar');
         const statusText = document.getElementById('status-text');
         const statusIcon = statusBar.querySelector('i');
-        
         const notifyToggle = document.getElementById('notify-toggle');
         const toggleStatusText = document.getElementById('toggle-status-text');
 
@@ -349,19 +290,19 @@
                     notifyToggle.checked = false;
                     return;
                 }
-
                 const permission = await Notification.requestPermission();
                 if (permission === 'granted') {
                     localStorage.setItem('shiraiwa_notify_enabled', 'true');
                     updateToggleText(true);
                     registerSW();
-                    
-                    new Notification("通知ON", { body: "設定を保存しました。運行開始時に通知します。" });
+                    new Notification("通知ON", { 
+                        body: "設定完了しました。※通知はテストであり正確ではない可能性があります。",
+                        icon: "group.jpg"
+                    });
                 } else {
                     notifyToggle.checked = false;
-                    alert("通知が許可されませんでした。ブラウザの設定を確認してください。");
+                    alert("通知が許可されませんでした。");
                 }
-
             } else {
                 localStorage.setItem('shiraiwa_notify_enabled', 'false');
                 updateToggleText(false);
@@ -379,12 +320,9 @@
 
         function unregisterSW() {
             if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                    for(let registration of registrations) {
-                        registration.unregister();
-                    }
+                navigator.serviceWorker.getRegistrations().then(registrations => {
+                    for(let registration of registrations) registration.unregister();
                 });
-                console.log('SW Unregistered');
             }
         }
 
@@ -422,7 +360,6 @@
             }
         }
         
-        // 20秒ごとに更新 (20000ミリ秒)
         setInterval(fetchTrainStatus, 20000); 
 
         const backToTopBtn = document.getElementById("back-to-top");
